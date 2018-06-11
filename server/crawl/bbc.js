@@ -47,7 +47,6 @@ async.waterfall([
                             }
                             var code = utils.slug(name);
                             shell.mkdir('-p', `${dir}/${code}`);
-                            // console.log('======>>> code = ', code);
                             var lesson = {
                                 url: url,
                                 name: name,
@@ -57,7 +56,6 @@ async.waterfall([
                                 image: image
                             };
                             lessons.push(lesson);
-                            // console.log('=====>>> ', lesson);
                             shell.echo(JSON.stringify(lesson)).to(`${dir}/${code}/info.json`);
                             ok();
                         }
@@ -106,10 +104,6 @@ async.waterfall([
                         if (content)
                             lesson.content = content;
                     }
-
-                    lesson = _.extend(lesson, {
-                        crawl_failed: (!pdf && !audio) ? true : false
-                    });
                     shell.echo(JSON.stringify(lesson)).to(`${dir}/${code}/info.json`);
                     ok();
                 }
