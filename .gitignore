@@ -1,0 +1,7 @@
+#general
+node_modules
+vendor
+.sass-cache
+.idea
+.DS_Store
+npm-debug.log
