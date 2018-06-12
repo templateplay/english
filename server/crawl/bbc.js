@@ -66,53 +66,6 @@ async.waterfall([
         }, function(err) {
             done();
         });
-    },
-    //crawl detail
-    function(done) {
-        console.log('==========>>>>> start details');
-        lessons = lessons.slice(1, 5);
-        console.log('==========>>>>> start details', lessons);
-        async.eachSeries(lessons, function(lesson, done) {
-            var c = new Crawler({
-                maxConnections: 10,
-                callback: function(error, res, ok) {
-                    var $ = res.$;
-                    var pdf = $('.bbcle-download-extension-pdf').attr('href');
-                    if (!pdf)
-                        pdf = $('a[href*=".pdf"]').first().attr('href');
-                    if (pdf)
-                        pdf = pdf.toLowerCase();
-                    if (!utils.isValidPdf(pdf))
-                        pdf = '';
-
-                    var audio = $('.bbcle-download-extension-mp3').attr('href');
-                    if (!audio)
-                        audio = $('a[href*=".mp3"]').first().attr('href');
-                    if (!audio)
-                        audio = $('a[href*=".wav"]').first().attr('href');
-                    if (audio)
-                        audio = audio.toLowerCase();
-                    if (!utils.isValidAudio(audio))
-                        audio = '';
-
-                    if (audio)
-                        lesson.audio = audio;
-                    if (pdf)
-                        lesson.pdf = pdf;
-                    if (!pdf) {
-                        var content = $('.widget-richtext').html();
-                        if (content)
-                            lesson.content = content;
-                    }
-                    shell.echo(JSON.stringify(lesson)).to(`${dir}/${code}/info.json`);
-                    ok();
-                }
-            });
-            c.queue(lesson.url);
-        }, function() {
-            done();
-        });
-        done();
     }
 ], function(err, result) {
     console.log('[BBC] finish');

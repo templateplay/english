@@ -13,63 +13,70 @@ var utils = require('../lib/utils'),
     Crawler = require('crawler');
 
 glob("./data/bbc/**/info.json", function(er, files) {
-    console.log('files ::: ', files);
     async.eachSeries(files, function(file, done) {
-        var article = require(path.resolve(file));
-        // if (article.done) {
-        var c = new Crawler({
-            maxConnections: 10,
-            callback: function(error, res, ok) {
-                var $ = res.$;
-                var pdf = $('.bbcle-download-extension-pdf').attr('href');
-                if (!pdf)
-                    pdf = $('a[href*=".pdf"]').first().attr('href');
-                if (pdf)
-                    pdf = pdf.toLowerCase();
-                if (!utils.isValidPdf(pdf))
-                    pdf = '';
-
-                var audio = $('.bbcle-download-extension-mp3').attr('href');
-                if (!audio)
-                    audio = $('a[href*=".mp3"]').first().attr('href');
-                if (!audio)
-                    audio = $('a[href*=".wav"]').first().attr('href');
-                if (audio)
-                    audio = audio.toLowerCase();
-                if (!utils.isValidAudio(audio))
-                    audio = '';
-
-                if (audio)
-                    article.audio = audio;
-                if (pdf)
-                    article.pdf = pdf;
-                if (!pdf) {
+        var infoFilePath = path.resolve(file),
+            article = require(infoFilePath),
+            htmlFilePath = infoFilePath.replace('info.json', 'content.html'),
+            pdfFilePath = infoFilePath.replace('info.json', article.code + '.pdf'),
+            audioFilePath = infoFilePath.replace('info.json', article.code + '.mp3'),
+            pdfFilePathExist = fs.existsSync(pdfFilePath),
+            audioFilePathExist = fs.existsSync(audioFilePath),
+            htmlFilePathExist = fs.existsSync(htmlFilePath);
+        console.log(`========================= ::: ${article.code} ::: =========================`);
+        if (!(pdfFilePathExist && audioFilePathExist && htmlFilePathExist)) {
+            var c = new Crawler({
+                maxConnections: 10,
+                callback: function(error, res, ok) {
+                    var $ = res.$;
+                    var pdf = $('.bbcle-download-extension-pdf').attr('href');
+                    if (!pdf)
+                        pdf = $('a[href*=".pdf"]').first().attr('href');
+                    if (pdf)
+                        pdf = pdf.toLowerCase();
+                    if (!utils.isValidPdf(pdf))
+                        pdf = '';
+                    var audio = $('.bbcle-download-extension-mp3').attr('href');
+                    if (!audio)
+                        audio = $('a[href*=".mp3"]').first().attr('href');
+                    if (!audio)
+                        audio = $('a[href*=".wav"]').first().attr('href');
+                    if (audio)
+                        audio = audio.toLowerCase();
+                    if (!utils.isValidAudio(audio))
+                        audio = '';
+                    if (audio)
+                        article.audio = audio;
+                    if (pdf)
+                        article.pdf = pdf;
                     var content = $('.widget-richtext').html();
-                    if (content)
-                        article.content = content;
+                    if (content && !htmlFilePathExist) {
+                        console.log('======>>>> write content to : ', htmlFilePath);
+                        shell.echo(content).to(htmlFilePath);
+                    }
+                    delete article.crawl_failed;
+                    article.done = true;
+                    shell.echo(JSON.stringify(article)).to(file);
+                    if (article.audio && !audioFilePathExist) {
+                        console.log('======>>>> download : ', article.audio, ' to : ', audioFilePath);
+                        request
+                            .get(article.audio)
+                            .pipe(fs.createWriteStream(audioFilePath))
+                    }
+                    if (article.pdf && !pdfFilePathExist) {
+                        console.log('======>>>> download : ', article.pdf, ' to : ', pdfFilePath);
+                        request
+                            .get(article.pdf)
+                            .pipe(fs.createWriteStream(pdfFilePath))
+                    }
+                    ok();
+                    done();
                 }
-                delete article.crawl_failed;
-                article.done = true;
-                shell.echo(JSON.stringify(article)).to(file);
-                if (article.audio) {
-                    var extension = _.last(article.audio.split('.')),
-                        name = `${article.code}.${extension}`;
-                    request
-                        .get(article.audio)
-                        .on('error', function(err) {
-                            console.log(err);
-                        })
-                        .pipe(fs.createWriteStream(`${file.replace('info.json', name)}`))
-                }
-                ok();
-                done();
-            }
-        });
-        c.queue(article.url);
-        // } else {
-        //     done();
-        // }
+            });
+            c.queue(article.url);
+        } else {
+            done();
+        }
     }, function() {
-        done();
+        console.log(`========================= ::: DONE ::: =========================`);
     });
 })
