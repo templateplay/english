@@ -2,5 +2,15 @@
 	"bbc_categories": [{
 		"name": "6 Minute English",
 		"url": "http://www.bbc.co.uk/learningenglish/english/features/6-minute-english"
+	}, {
+		"name": "Words in the News",
+		"url": "http://www.bbc.co.uk/learningenglish/english/features/witn"
+	}],
+	"voa": [{
+		"name": "As it is",
+		"url": "https://learningenglish.voanews.com/z/3521"
+	}, {
+		"name": "Word and their stories",
+		"url": "https://learningenglish.voanews.com/z/987"
 	}]
 }

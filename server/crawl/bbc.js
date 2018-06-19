@@ -3,38 +3,35 @@
 var utils = require('../lib/utils'),
     config = require('config'),
     categories = config.bbc_categories,
-    lessons = [],
     fs = require('fs'),
     shell = require('shelljs'),
-    _ = require('lodash'),
-    path = require('path'),
-    async = require('async'),
     Crawler = require('crawler');
 
-console.log('[BBC] start');
-async.waterfall([
-    //crawl list
-    function(done) {
-        console.info('[BBC.categories] start', {
-            categories: categories.length
-        });
-        async.eachSeries(categories, function(category, done) {
-            var dir = `./data/bbc/${utils.slug(category.name)}`;
-            // console.log('=====>>> dir : ', dir);
-            shell.mkdir('-p', dir);
-            var c = new Crawler({
-                maxConnections: 10,
-                callback: function(error, res, ok) {
-                    var $ = res.$,
-                        elm = $('.widget h2 a'),
-                        length = elm ? elm.length : 0;
-                    $('.widget h2 a').each(function(index, a) {
-                        var lastItem = index === length - 1;
-                        var url = $(a).attr('href');
-                        if (url && url.indexOf('http:') === -1) {
-                            url = 'http://www.bbc.co.uk' + url;
-                            url = url.toLowerCase();
-                            var name = $(a).text();
+const crawl = (category) => {
+    console.log(`========>>> [START] ${category.name}`);
+    var dir = `./data/bbc/${utils.slug(category.name)}`;
+    shell.mkdir('-p', dir);
+    return new Promise(resolve => {
+        new Crawler({
+            maxConnections: 10,
+            callback: function(error, res, ok) {
+                var $ = res.$,
+                    elm = $('.widget h2 a'),
+                    length = elm ? elm.length : 0;
+                $('.widget h2 a').each(function(index, a) {
+                    var lastItem = index === length - 1;
+                    var url = $(a).attr('href');
+                    if (url && url.indexOf('http:') === -1) {
+                        url = 'http://www.bbc.co.uk' + url;
+                        url = url.toLowerCase();
+                        var name = $(a).text(),
+                            code = utils.slug(name),
+                            filePath = `${dir}/${code}/info.json`;
+                        if (fs.existsSync(filePath)) {
+                            console.log(`========>>> ${code} :: existed`);
+                            ok();
+                            resolve();
+                        } else {
                             var box = $(a).parent().parent();
                             var description = $(box).find('p').first().text();
                             var image = $(box).parent().find('.img img').first().attr('src');
@@ -45,7 +42,6 @@ async.waterfall([
                             } else {
                                 date = null;
                             }
-                            var code = utils.slug(name);
                             shell.mkdir('-p', `${dir}/${code}`);
                             var lesson = {
                                 url: url,
@@ -55,19 +51,20 @@ async.waterfall([
                                 published: date,
                                 image: image
                             };
-                            lessons.push(lesson);
-                            shell.echo(JSON.stringify(lesson)).to(`${dir}/${code}/info.json`);
+                            console.log(`========>>> ${code} :: added`);
+                            shell.echo(JSON.stringify(lesson)).to(filePath);
                             ok();
+                            resolve();
                         }
-                    });
-                }
-            });
-            c.queue(category.url);
-        }, function(err) {
-            done();
-        });
-    }
-], function(err, result) {
-    console.log('[BBC] finish');
-    done();
-});
+                    }
+                });
+            }
+        }).queue(category.url);
+    });
+};
+
+(async () => {
+    for (let category of categories) {
+        await crawl(category);
+    };
+})();
